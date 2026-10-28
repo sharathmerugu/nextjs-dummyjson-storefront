@@ -2,6 +2,8 @@
 
 A small e-commerce app built with Next.js 16 (App Router) on the [DummyJSON](https://dummyjson.com/docs/products) products API: a paginated product list, product detail pages, and a cart that survives reloads.
 
+**Live:** https://nextjs-dummyjson-storefront.vercel.app
+
 ## Running locally
 
 Requires Node.js 22+.
