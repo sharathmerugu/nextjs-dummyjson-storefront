@@ -6,7 +6,8 @@ import { formatCents } from "@/lib/money";
 import { useCart } from "./CartProvider";
 
 export function CartView() {
-  const { items, hydrated, totalCount, totalPriceCents, increment, decrement, remove } = useCart();
+  const { items, hydrated, totalCount, totalPriceCents, totalSavingsCents, increment, decrement, remove } =
+    useCart();
 
   // Rendering "empty" before the saved cart loads would flash the wrong state.
   if (!hydrated) {
@@ -90,6 +91,12 @@ export function CartView() {
             <dt>Items</dt>
             <dd>{totalCount}</dd>
           </div>
+          {totalSavingsCents > 0 && (
+            <div className="flex justify-between text-green-800">
+              <dt>You save</dt>
+              <dd>−{formatCents(totalSavingsCents)}</dd>
+            </div>
+          )}
           <div className="flex justify-between text-lg font-semibold">
             <dt>Total</dt>
             <dd>{formatCents(totalPriceCents)}</dd>

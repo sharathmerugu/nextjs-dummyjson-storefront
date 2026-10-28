@@ -1,17 +1,20 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { toCartProduct } from "./cart";
 import { CartProvider, useCart } from "./CartProvider";
 
 const mascara = {
   id: 1,
   title: "Mascara",
   priceCents: 999,
+  listPriceCents: 999,
   thumbnail: "https://cdn.dummyjson.com/product-images/mascara.webp",
 };
 const lipstick = {
   id: 2,
   title: "Lipstick",
   priceCents: 1250,
+  listPriceCents: 1250,
   thumbnail: "https://cdn.dummyjson.com/product-images/lipstick.webp",
 };
 
@@ -75,10 +78,33 @@ describe("cart", () => {
     expect(result.current.totalCount).toBe(1);
     expect(result.current.totalPriceCents).toBe(1250);
   });
+
+  it("charges the discounted unit price, rounded to cents once, for every unit", async () => {
+    const { result } = await renderCart();
+    const discounted = toCartProduct({
+      id: 3,
+      title: "Lash Princess",
+      price: 9.99,
+      discountPercentage: 10.48,
+      rating: 2.56,
+      thumbnail: "https://cdn.dummyjson.com/product-images/lash.webp",
+    });
+
+    act(() => result.current.add(discounted));
+    act(() => result.current.increment(discounted.id));
+    act(() => result.current.increment(discounted.id));
+    act(() => result.current.add(lipstick));
+
+    expect(result.current.items[0]).toMatchObject({ priceCents: 894, listPriceCents: 999, quantity: 3 });
+    // 3 × 8.94 + 12.50; the per-unit price is rounded before multiplying.
+    expect(result.current.totalPriceCents).toBe(3932);
+    // 3 × (9.99 − 8.94)
+    expect(result.current.totalSavingsCents).toBe(315);
+  });
 });
 
 describe("cart persistence", () => {
-  const STORAGE_KEY = "cart:v1";
+  const STORAGE_KEY = "cart:v2";
 
   it("restores the cart after the app is reloaded", async () => {
     const first = await renderCart();
@@ -134,6 +160,14 @@ describe("cart persistence", () => {
     { case: "not a list", stored: JSON.stringify({ items: [] }) },
     { case: "a line without a price", stored: JSON.stringify([{ ...mascara, priceCents: undefined, quantity: 1 }]) },
     { case: "a fractional price", stored: JSON.stringify([{ ...mascara, priceCents: 9.99, quantity: 1 }]) },
+    {
+      case: "a line without a list price",
+      stored: JSON.stringify([{ ...mascara, listPriceCents: undefined, quantity: 1 }]),
+    },
+    {
+      case: "a list price below the price paid",
+      stored: JSON.stringify([{ ...mascara, listPriceCents: 500, quantity: 1 }]),
+    },
     { case: "a zero quantity", stored: JSON.stringify([{ ...mascara, quantity: 0 }]) },
     { case: "a string id", stored: JSON.stringify([{ ...mascara, id: "1", quantity: 1 }]) },
     // next/image only accepts DummyJSON's CDN; any other host would crash the cart page.

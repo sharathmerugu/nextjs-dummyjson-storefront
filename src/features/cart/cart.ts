@@ -1,11 +1,14 @@
-import { toCents } from "@/lib/money";
+import { discountedCents, toCents } from "@/lib/money";
 import type { ProductSummary } from "@/lib/products";
 
 /** What the cart keeps about a product: a snapshot taken when it was added. */
 export type CartProduct = {
   id: number;
   title: string;
+  /** Unit price after discount: what the shopper pays. */
   priceCents: number;
+  /** Unit price before discount, kept only to show savings. */
+  listPriceCents: number;
   thumbnail: string;
 };
 
@@ -14,8 +17,20 @@ export type CartItem = CartProduct & { quantity: number };
 // Must match `images.remotePatterns` in next.config.ts, or next/image rejects the URL.
 const IMAGE_URL_PREFIX = "https://cdn.dummyjson.com/product-images/";
 
-export function toCartProduct({ id, title, price, thumbnail }: ProductSummary): CartProduct {
-  return { id, title, priceCents: toCents(price), thumbnail };
+export function toCartProduct({
+  id,
+  title,
+  price,
+  discountPercentage,
+  thumbnail,
+}: ProductSummary): CartProduct {
+  return {
+    id,
+    title,
+    priceCents: discountedCents(price, discountPercentage),
+    listPriceCents: toCents(price),
+    thumbnail,
+  };
 }
 
 type CartState = {
@@ -85,6 +100,8 @@ function isCartItem(value: unknown): value is CartItem {
     typeof item.title === "string" &&
     Number.isSafeInteger(item.priceCents) &&
     (item.priceCents as number) >= 0 &&
+    Number.isSafeInteger(item.listPriceCents) &&
+    (item.listPriceCents as number) >= (item.priceCents as number) &&
     typeof item.thumbnail === "string" &&
     item.thumbnail.startsWith(IMAGE_URL_PREFIX) &&
     isPositiveInteger(item.quantity)
@@ -97,4 +114,8 @@ export function getTotalCount(items: CartItem[]): number {
 
 export function getTotalPriceCents(items: CartItem[]): number {
   return items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+}
+
+export function getTotalSavingsCents(items: CartItem[]): number {
+  return items.reduce((sum, item) => sum + (item.listPriceCents - item.priceCents) * item.quantity, 0);
 }

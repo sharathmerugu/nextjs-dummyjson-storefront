@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ProductSummary } from "@/lib/products";
-import { formatDollars } from "@/lib/money";
+import { Price } from "./Price";
 import { Rating } from "./Rating";
 
 export function ProductCard({ product }: { product: ProductSummary }) {
@@ -20,7 +20,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
       />
       <h2 className="mt-3 line-clamp-2 font-medium group-hover:underline">{product.title}</h2>
       <div className="mt-auto flex items-center justify-between pt-2">
-        <span className="font-semibold">{formatDollars(product.price)}</span>
+        <Price price={product.price} discountPercentage={product.discountPercentage} />
         <Rating value={product.rating} />
       </div>
     </Link>

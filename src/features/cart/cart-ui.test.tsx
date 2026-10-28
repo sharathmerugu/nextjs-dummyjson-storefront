@@ -9,12 +9,14 @@ const mascara = {
   id: 1,
   title: "Mascara",
   priceCents: 999,
+  listPriceCents: 999,
   thumbnail: "https://cdn.dummyjson.com/product-images/mascara.webp",
 };
 const lipstick = {
   id: 2,
   title: "Lipstick",
   priceCents: 1250,
+  listPriceCents: 1250,
   thumbnail: "https://cdn.dummyjson.com/product-images/lipstick.webp",
 };
 
@@ -23,7 +25,7 @@ afterEach(() => {
 });
 
 function saveCart(items: unknown[]) {
-  localStorage.setItem("cart:v1", JSON.stringify(items));
+  localStorage.setItem("cart:v2", JSON.stringify(items));
 }
 
 describe("add to cart button", () => {
@@ -105,6 +107,20 @@ describe("cart page", () => {
     const summary = within(screen.getByRole("region", { name: "Order summary" }));
     expect(summary.getByText("3")).toBeTruthy();
     expect(summary.getByText("$32.48")).toBeTruthy();
+    expect(summary.queryByText("You save")).toBeNull();
+  });
+
+  it("charges discounted prices and shows the savings in the order summary", async () => {
+    saveCart([{ ...mascara, priceCents: 894, listPriceCents: 999, quantity: 2 }]);
+    renderCartPage();
+
+    const line = within(await screen.findByRole("listitem", { name: "Mascara" }));
+    expect(line.getByText("$8.94 each")).toBeTruthy();
+    expect(line.getByText("$17.88")).toBeTruthy();
+
+    const summary = within(screen.getByRole("region", { name: "Order summary" }));
+    expect(summary.getByText("−$2.10")).toBeTruthy();
+    expect(summary.getByText("$17.88")).toBeTruthy();
   });
 
   it("changes quantities, never below one, and updates the totals", async () => {

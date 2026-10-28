@@ -5,19 +5,22 @@ import {
   cartReducer,
   getTotalCount,
   getTotalPriceCents,
+  getTotalSavingsCents,
   initialCartState,
   parseStoredCart,
   type CartItem,
   type CartProduct,
 } from "./cart";
 
-const STORAGE_KEY = "cart:v1";
+// v1 lines held pre-discount prices and no list price; bumping the key drops them.
+const STORAGE_KEY = "cart:v2";
 
 type CartContextValue = {
   items: CartItem[];
   hydrated: boolean;
   totalCount: number;
   totalPriceCents: number;
+  totalSavingsCents: number;
   add: (product: CartProduct) => void;
   increment: (id: number) => void;
   decrement: (id: number) => void;
@@ -46,6 +49,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     hydrated: state.hydrated,
     totalCount: getTotalCount(state.items),
     totalPriceCents: getTotalPriceCents(state.items),
+    totalSavingsCents: getTotalSavingsCents(state.items),
     add: (product) => dispatch({ type: "add", product }),
     increment: (id) => dispatch({ type: "increment", id }),
     decrement: (id) => dispatch({ type: "decrement", id }),

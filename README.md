@@ -18,7 +18,7 @@ Other scripts:
 | Command              | What it does                                                   |
 | -------------------- | -------------------------------------------------------------- |
 | `npm test`           | Unit/integration tests (Vitest + Testing Library)              |
-| `npm run test:e2e`   | Builds the app and runs the Playwright end-to-end test         |
+| `npm run test:e2e`   | Builds the app against fixture data and runs the Playwright test |
 | `npm run typecheck`  | Generates Next.js route types and runs `tsc`                   |
 | `npm run lint`       | ESLint                                                         |
 | `npm run build && npm start` | Production build and server                            |
@@ -27,21 +27,21 @@ Before the first e2e run, install the browser once with `npx playwright install 
 
 ## Deployment
 
-Hosted on Vercel. No environment variables are needed because DummyJSON is a public API. Deploys are manual (`npx vercel deploy --prod`): the Vercel project isn't connected to the GitHub repo, so pushes don't deploy automatically.
+Hosted on Vercel. No environment variables are needed because DummyJSON is a public API. (`DUMMYJSON_API_URL` overrides the API base URL; only the e2e setup uses it.) Deploys are manual (`npx vercel deploy --prod`): the Vercel project isn't connected to the GitHub repo, so pushes don't deploy automatically.
 
 ## How it's put together
 
 ```
 src/
   app/                 routes only: pages, loading, error and not-found states
-  components/          server-rendered UI: Header, ProductCard, Pagination, Rating
+  components/          server-rendered UI: Header, ProductCard, Price, Pagination, Rating
   features/cart/       the cart: pure reducer, provider + useCart hook, cart UI
   lib/products.ts      DummyJSON client: fetching, caching, runtime validation
-  lib/money.ts         cents conversion and USD formatting
-e2e/                   Playwright test
+  lib/money.ts         cents conversion, discount calculation, USD and percent formatting
+e2e/                   Playwright test and its fixture DummyJSON server
 ```
 
-**Server vs. client.** Product data is fetched and rendered in Server Components. Nothing about the catalog ships as client JavaScript. Client Components sit only at the leaves that need browser state: the cart provider, the header's cart link, the "Add to cart" button and the cart page body. The provider wraps the layout's `children`, but those children stay server-rendered. The detail page passes only the four fields the cart needs (`id`, `title`, `priceCents`, `thumbnail`) across the boundary, not the whole product.
+**Server vs. client.** Product data is fetched and rendered in Server Components. Nothing about the catalog ships as client JavaScript. Client Components sit only at the leaves that need browser state: the cart provider, the header's cart link, the "Add to cart" button and the cart page body. The provider wraps the layout's `children`, but those children stay server-rendered. The detail page passes only the five fields the cart needs (`id`, `title`, `priceCents`, `listPriceCents`, `thumbnail`) across the boundary, not the whole product.
 
 **Data fetching and caching.** Pages call `getProducts(page)` / `getProduct(id)` directly. There are no API routes and no client fetching library, because there's no client-side server state to manage. The app uses Cache Components (the default for new Next.js 16 apps), so each upstream response is cached with `"use cache"` + `cacheLife("hours")`, revalidating roughly hourly. Pages read `searchParams`/`params` at request time and stream in behind `loading.tsx` skeletons, while the header and layout are prerendered as a static shell.
 
@@ -64,11 +64,11 @@ e2e/                   Playwright test
 - **Context over Zustand.** With three consumers, Context re-rendering every consumer on change costs nothing measurable. If the cart grew more consumers or derived state, Zustand's selectors and `persist` middleware would be the next step.
 - **Quantities, with "Add to cart" only on the detail page.** Adding the same product twice increases its quantity, and the header shows the total quantity. Product cards are links, and nesting a button inside a link is invalid interactive HTML, so card-level adding was left out rather than restructuring the cards.
 - **Decrease stops at 1.** Removing a line is always the explicit "Remove" action, never a side effect of the "−" button.
-- **Discounts are displayed, not applied.** The brief asks to show the discount percentage, rounded here to a whole percent and hidden at 0%. The cart total uses the listed `price`.
+- **Discounts are applied, and DummyJSON's `price` is assumed to be the pre-discount price.** The API returns `price` and `discountPercentage` without saying whether the discount is already included; this app assumes it isn't. The exact percentage is used (10.48%, not 10%), and the unit price is rounded to cents once, in `discountedCents` (`lib/money.ts`), which the cards, the detail page and the cart all share. The badge shows the same exact percentage ("10.48% off"). Cart lines snapshot both the discounted and original unit price, so the order summary can show savings without recalculating anything. Cart storage moved to `cart:v2`, so carts saved before this change (with undiscounted prices) are dropped.
 - **Tests sit at three seams.** Testing behaviour through public interfaces keeps the tests robust to refactoring:
   - The products module's public functions, with `fetch` stubbed. Covers pagination, ID validation, 404s, error statuses, network failures and malformed responses.
   - The cart through `CartProvider`/`useCart` and its UI with a real jsdom `localStorage`. Covers repeated adds, quantities, removal, totals, hydration, persistence and corrupt-storage recovery.
-  - One Playwright test against a production build. Adds a product twice, checks the quantity and total, reloads to confirm persistence, then removes it.
+  - One Playwright test against a production build fed by a small fixture API (`e2e/fixtures`). Checks discounted prices on the card and detail page, adds a product twice, checks the quantity, savings and total, reloads to confirm persistence, then removes it.
   
   There are no separate reducer unit tests and no snapshot tests.
 
@@ -78,6 +78,6 @@ e2e/                   Playwright test
 - **Cart prices can go stale**, because they are snapshots taken when the product was added.
 - **No cross-tab sync.** A cart changed in one tab updates in another only after a reload.
 - **Stock and minimum order quantities are ignored.**
-- **The e2e test hits the live DummyJSON API**, so it depends on the network and on DummyJSON's sample data staying the same.
+- **The e2e test uses fixture data, not the live API**, so it won't catch DummyJSON changing its response shape or pricing. Product images still load from DummyJSON's CDN. The e2e build is prerendered from fixtures, so run `npm run build` again before serving real data.
 - **Catalog changes appear late.** Upstream responses are cached for about an hour.
 - **Out of scope:** checkout, auth, search, filtering, sorting, and numbered pagination.

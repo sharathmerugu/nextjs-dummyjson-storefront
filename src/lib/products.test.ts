@@ -49,7 +49,7 @@ describe("getProducts", () => {
     expect(url.origin + url.pathname).toBe("https://dummyjson.com/products");
     expect(url.searchParams.get("limit")).toBe("20");
     expect(url.searchParams.get("skip")).toBe("20");
-    expect(url.searchParams.get("select")).toBe("title,price,rating,thumbnail");
+    expect(url.searchParams.get("select")).toBe("title,price,discountPercentage,rating,thumbnail");
   });
 
   it("returns the product summaries and catalog size", async () => {
@@ -59,6 +59,7 @@ describe("getProducts", () => {
           id: 1,
           title: "Mascara",
           price: 9.99,
+          discountPercentage: 10.48,
           rating: 2.56,
           thumbnail: "https://cdn.dummyjson.com/1.webp",
           brand: "Essence",
@@ -75,6 +76,7 @@ describe("getProducts", () => {
           id: 1,
           title: "Mascara",
           price: 9.99,
+          discountPercentage: 10.48,
           rating: 2.56,
           thumbnail: "https://cdn.dummyjson.com/1.webp",
         },
@@ -119,6 +121,7 @@ describe("getProducts", () => {
     id: 1,
     title: "Mascara",
     price: 9.99,
+    discountPercentage: 10.48,
     rating: 2.56,
     thumbnail: "https://cdn.dummyjson.com/1.webp",
   };
@@ -129,6 +132,12 @@ describe("getProducts", () => {
     { case: "a product has no id", body: { products: [{ ...validProduct, id: undefined }], total: 1 } },
     { case: "a price is a string", body: { products: [{ ...validProduct, price: "9.99" }], total: 1 } },
     { case: "a price is negative", body: { products: [{ ...validProduct, price: -1 }], total: 1 } },
+    {
+      case: "a discount is missing",
+      body: { products: [{ ...validProduct, discountPercentage: undefined }], total: 1 },
+    },
+    { case: "a discount is negative", body: { products: [{ ...validProduct, discountPercentage: -5 }], total: 1 } },
+    { case: "a discount is over 100%", body: { products: [{ ...validProduct, discountPercentage: 101 }], total: 1 } },
     { case: "a title is missing", body: { products: [{ ...validProduct, title: null }], total: 1 } },
     { case: "the body is null", body: null },
   ])("fails when $case", async ({ body }) => {

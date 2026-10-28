@@ -1,19 +1,21 @@
 import { cacheLife } from "next/cache";
 
-const API_URL = "https://dummyjson.com";
+// Overridable so e2e tests can point the app at a local fixture server.
+const API_URL = process.env.DUMMYJSON_API_URL ?? "https://dummyjson.com";
 const PAGE_SIZE = 20;
 
 export type ProductSummary = {
   id: number;
   title: string;
+  /** Treated as the pre-discount price; DummyJSON doesn't document which it is. */
   price: number;
+  discountPercentage: number;
   rating: number;
   thumbnail: string;
 };
 
 export type Product = ProductSummary & {
   description: string;
-  discountPercentage: number;
   images: string[];
 };
 
@@ -39,7 +41,7 @@ export async function getProducts(page: number): Promise<ProductPage> {
   const params = new URLSearchParams({
     limit: String(PAGE_SIZE),
     skip: String((page - 1) * PAGE_SIZE),
-    select: "title,price,rating,thumbnail",
+    select: "title,price,discountPercentage,rating,thumbnail",
   });
   const body = await readJson(await request(`/products?${params}`));
   if (!isProductList(body)) {
@@ -100,8 +102,15 @@ function parsePositiveInteger(raw: string): number | null {
   return Number.isSafeInteger(value) ? value : null;
 }
 
-function toProductSummary({ id, title, price, rating, thumbnail }: ProductSummary): ProductSummary {
-  return { id, title, price, rating, thumbnail };
+function toProductSummary({
+  id,
+  title,
+  price,
+  discountPercentage,
+  rating,
+  thumbnail,
+}: ProductSummary): ProductSummary {
+  return { id, title, price, discountPercentage, rating, thumbnail };
 }
 
 // TypeScript types don't validate external JSON, so the fields the UI relies on
@@ -126,6 +135,9 @@ function isProductSummary(value: unknown): value is ProductSummary {
     typeof value.title === "string" &&
     isFiniteNumber(value.price) &&
     value.price >= 0 &&
+    isFiniteNumber(value.discountPercentage) &&
+    value.discountPercentage >= 0 &&
+    value.discountPercentage <= 100 &&
     isFiniteNumber(value.rating) &&
     typeof value.thumbnail === "string"
   );
@@ -133,10 +145,9 @@ function isProductSummary(value: unknown): value is ProductSummary {
 
 function isProduct(value: unknown): value is Product {
   if (!isProductSummary(value)) return false;
-  const { description, discountPercentage, images } = value as Record<string, unknown>;
+  const { description, images } = value as Record<string, unknown>;
   return (
     typeof description === "string" &&
-    isFiniteNumber(discountPercentage) &&
     Array.isArray(images) &&
     images.every((image) => typeof image === "string")
   );

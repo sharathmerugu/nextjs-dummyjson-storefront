@@ -8,7 +8,7 @@ A Next.js 16 App Router app (TypeScript strict, Tailwind, npm) that renders the 
 
 ## User Stories
 1. As a shopper, I want to see a grid of products on the home page, so that I can browse what's available.
-2. As a shopper, I want each product card to show image, title, price and rating, so that I can compare at a glance.
+2. As a shopper, I want each product card to show image, title, price (discounted, with the original struck through) and rating, so that I can compare at a glance.
 3. As a shopper, I want to click a product card to open its detail page.
 4. As a shopper, I want 20 products per page, so that pages load quickly and stay scannable.
 5. As a shopper, I want Previous/Next controls and "Page X of Y", so that I know where I am.
@@ -31,7 +31,7 @@ A Next.js 16 App Router app (TypeScript strict, Tailwind, npm) that renders the 
 22. As a shopper, I want a cart page listing thumbnail, linked title, unit price, quantity controls, line subtotal and Remove for each line.
 23. As a shopper, I want +/− quantity controls, with − disabled at 1.
 24. As a shopper, I want to remove a product entirely.
-25. As a shopper, I want to see the total item count and total price on the cart page.
+25. As a shopper, I want to see the total item count, my discount savings and the total price on the cart page.
 26. As a shopper, I want accurate totals with no floating-point artifacts.
 27. As a shopper, I want an empty-cart message linking home.
 28. As a shopper, I want my cart to survive refreshes and browser restarts.
@@ -44,42 +44,45 @@ A Next.js 16 App Router app (TypeScript strict, Tailwind, npm) that renders the 
 **Rendering and boundaries**
 - These are server components: layout, header shell, home, product card, pagination, detail page, not-found pages.
 - These are client components: the cart provider (wraps layout `children`), the header cart link, the add-to-cart button, the cart page body, and the error boundary.
-- The add-to-cart button receives only `{ id, title, priceCents, thumbnail }`.
+- The add-to-cart button receives only `{ id, title, priceCents, listPriceCents, thumbnail }`.
 
 **Products data module (server)**
 - Interface:
   - `parsePage(raw) → positive integer` (defaults to 1).
   - `getProducts(page) → { products, total, pageCount }`.
   - `getProduct(rawId) → Product | null`.
-- The list uses `limit=20`, `skip=(page−1)×20`, and `select=title,price,rating,thumbnail`.
+- The base URL defaults to `https://dummyjson.com` and can be overridden with `DUMMYJSON_API_URL` (used by e2e).
+- The list uses `limit=20`, `skip=(page−1)×20`, and `select=title,price,discountPercentage,rating,thumbnail`.
 - `pageCount = max(1, ceil(total / 20))`. The home page calls `notFound()` only when `page > pageCount`. An empty catalog renders page 1 with an empty state.
 - IDs are validated as positive integers (safe-integer range) before any fetch. An invalid ID or an upstream 404 returns `null`, and the route calls `notFound()`. Other non-OK statuses, network failures, non-JSON bodies and malformed shapes throw.
 - Caching: Cache Components is enabled (the Next 16.4 create-next-app default). Data functions use `"use cache"` + `cacheLife("hours")`, giving about one-hour revalidation. No specific upstream request rate is promised.
 - Runtime checks are hand-written type guards with no library.
-  - List: `products` is an array, `total` is a non-negative number. Each item has `id` as a positive integer, `title` as a string, `price` as a finite number ≥ 0, `rating` as a finite number, `thumbnail` as a string.
-  - Detail: the same checks, plus `description` as a string, `discountPercentage` as a finite number, and `images` as a string array.
+  - List: `products` is an array, `total` is a non-negative number. Each item has `id` as a positive integer, `title` as a string, `price` as a finite number ≥ 0, `discountPercentage` as a finite number from 0 to 100, `rating` as a finite number, `thumbnail` as a string.
+  - Detail: the same checks, plus `description` as a string and `images` as a string array.
 - Main image is `images[0]`, falling back to `thumbnail`.
 
 **Cart module (client)**
-- Line item: `{ id, title, priceCents, thumbnail, quantity }`. Price is converted to integer cents once.
+- Line item: `{ id, title, priceCents, listPriceCents, thumbnail, quantity }`. `priceCents` is the discounted unit price and `listPriceCents` the pre-discount one, both computed once when the product is added; the cart never recalculates discounts.
 - The reducer is pure, with actions `hydrate`, `add`, `increment`, `decrement` (floors at 1) and `remove`. Totals are computed by pure selectors.
 - The provider owns persistence:
-  - It starts empty with `hydrated = false`, reads `localStorage["cart:v1"]` after mount, validates it (invalid becomes empty), then hydrates.
+  - It starts empty with `hydrated = false`, reads `localStorage["cart:v2"]` after mount, validates it (invalid becomes empty), then hydrates.
   - It writes only when hydrated.
   - All storage access is wrapped in try/catch.
-- `useCart() → { items, hydrated, totalCount, totalPriceCents, add, increment, decrement, remove }`.
+- `useCart() → { items, hydrated, totalCount, totalPriceCents, totalSavingsCents, add, increment, decrement, remove }`.
 - The header count and cart page render placeholders until hydrated.
 
 **UI**
 - `next/image` with `remotePatterns` limited to `cdn.dummyjson.com`, plus `sizes`.
-- Money is formatted with `Intl.NumberFormat` in USD from cents. The discount is shown as a badge and not applied.
+- Money is formatted with `Intl.NumberFormat` in USD from cents.
+- Discounts are applied. DummyJSON's `price` is treated as the pre-discount price (the API doesn't say). The unit price paid is `round(price × (100 − discountPercentage))` cents, using the exact percentage and rounding once, in `discountedCents` (`lib/money.ts`). Cards and the detail page show it with the original struck through; the detail page adds an "N% off" badge with up to two decimals (e.g. "10.48% off"), hidden at 0%.
 - Route files: `loading`, `error`, `not-found`. `generateMetadata` on the detail page.
 
 ## Testing Decisions
 - Test external behaviour through public interfaces only. No snapshot tests and no separate reducer tests.
 - **Products seam** (Vitest, stubbed `fetch`): `parsePage` edge cases; skip/limit/select sent upstream; page count for total 0, an exact multiple, and a remainder; invalid IDs return null with no fetch; 404 returns null; error status, network failure, non-JSON and malformed shapes throw.
 - **Cart seam** (Vitest + RTL + jsdom `localStorage`, through `CartProvider`/`useCart` and the cart UI): repeated adds, increment/decrement, removal, totals, hydration, persistence across remount, no overwrite before hydration, corrupt-storage recovery, storage unavailable.
-- **E2E seam** (Playwright against a production build, live API): add the same product twice, verify quantity 2 and the correct total, reload to verify persistence, then remove.
+- **Money**: `discountedCents` for 0%, fractional and 100% discounts; `formatPercent`.
+- **E2E seam** (Playwright against a production build and a local fixture API): check discounted prices on the card and detail page, add the same product twice, verify quantity 2, savings and the correct total, reload to verify persistence, then remove.
 
 ## Out of Scope
-Checkout, auth, applying discounts, stock limits, cross-tab sync, search, filters, sorting, numbered pagination, i18n, refreshing stale prices.
+Checkout, auth, coupon codes, stock limits, cross-tab sync, search, filters, sorting, numbered pagination, i18n, refreshing stale prices.
