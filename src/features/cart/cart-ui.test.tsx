@@ -9,13 +9,13 @@ const mascara = {
   id: 1,
   title: "Mascara",
   priceCents: 999,
-  thumbnail: "https://cdn.dummyjson.com/mascara.webp",
+  thumbnail: "https://cdn.dummyjson.com/product-images/mascara.webp",
 };
 const lipstick = {
   id: 2,
   title: "Lipstick",
   priceCents: 1250,
-  thumbnail: "https://cdn.dummyjson.com/lipstick.webp",
+  thumbnail: "https://cdn.dummyjson.com/product-images/lipstick.webp",
 };
 
 afterEach(() => {
@@ -44,6 +44,17 @@ describe("add to cart button", () => {
 });
 
 describe("header cart link", () => {
+  it("shows a zero count for an empty cart", async () => {
+    render(
+      <CartProvider>
+        <CartLink />
+      </CartProvider>,
+    );
+
+    const link = await screen.findByRole("link", { name: "Cart, 0 items" });
+    expect(link.textContent).toBe("0");
+  });
+
   it("shows the saved item count once the cart has loaded", async () => {
     saveCart([
       { ...mascara, quantity: 2 },

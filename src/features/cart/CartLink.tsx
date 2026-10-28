@@ -27,7 +27,7 @@ export function CartLink() {
           <circle cx="18" cy="20" r="1.25" />
         </svg>
         {/* The count is unknown until the saved cart loads; showing 0 first would be wrong. */}
-        {hydrated && totalCount > 0 && (
+        {hydrated && (
           <span
             aria-hidden
             className="absolute -right-1 -top-1 min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs font-semibold leading-5 text-white"

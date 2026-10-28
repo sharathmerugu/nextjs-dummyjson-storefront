@@ -1,7 +1,7 @@
 import { cacheLife } from "next/cache";
 
 const API_URL = "https://dummyjson.com";
-export const PAGE_SIZE = 20;
+const PAGE_SIZE = 20;
 
 export type ProductSummary = {
   id: number;
@@ -23,7 +23,7 @@ export type ProductPage = {
   pageCount: number;
 };
 
-export class ProductsApiError extends Error {
+class ProductsApiError extends Error {
   name = "ProductsApiError";
 }
 

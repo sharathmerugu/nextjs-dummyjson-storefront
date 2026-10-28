@@ -18,7 +18,7 @@ export function Pagination({ page, pageCount }: { page: number; pageCount: numbe
           ← Previous
         </Link>
       ) : (
-        <span aria-disabled className={disabledClass}>
+        <span className={disabledClass}>
           ← Previous
         </span>
       )}
@@ -30,7 +30,7 @@ export function Pagination({ page, pageCount }: { page: number; pageCount: numbe
           Next →
         </Link>
       ) : (
-        <span aria-disabled className={disabledClass}>
+        <span className={disabledClass}>
           Next →
         </span>
       )}

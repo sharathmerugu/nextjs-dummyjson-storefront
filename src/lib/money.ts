@@ -9,6 +9,6 @@ export function formatCents(cents: number): string {
   return usd.format(cents / 100);
 }
 
-export function formatPrice(amount: number): string {
+export function formatDollars(amount: number): string {
   return formatCents(toCents(amount));
 }

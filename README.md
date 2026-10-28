@@ -47,7 +47,7 @@ e2e/                   Playwright test
 - The reducer (`add`, `increment`, `decrement`, `remove`, `hydrate`) is pure.
 - All browser concerns live in the provider. It loads the saved cart from `localStorage` after mount, so the first client render matches the server render (an empty cart). It writes only after that load, so the empty initial state can never overwrite a saved cart.
 - Until then, the header badge and cart page render placeholders instead of a misleading "0" or "Your cart is empty", and "Add to cart" stays disabled.
-- Storage errors (private mode, quota) are caught, and the cart keeps working in memory. A corrupt or unexpected saved cart resets to empty.
+- Storage errors (private mode, quota) are caught, and the cart keeps working in memory. A corrupt or unexpected saved cart resets to empty. This includes image URLs outside DummyJSON's CDN, which `next/image` would refuse to render.
 
 **Money.** The cart stores prices in integer cents, and totals are summed in cents and formatted with `Intl.NumberFormat`. This avoids floating-point drift such as `0.1 + 0.2`.
 
@@ -58,7 +58,7 @@ e2e/                   Playwright test
 - **Context over Zustand.** With three consumers, Context re-rendering every consumer on change costs nothing measurable. If the cart grew more consumers or derived state, Zustand's selectors and `persist` middleware would be the next step.
 - **Quantities, with "Add to cart" only on the detail page.** Adding the same product twice increases its quantity, and the header shows the total quantity. Product cards are links, and nesting a button inside a link is invalid interactive HTML, so card-level adding was left out rather than restructuring the cards.
 - **Decrease stops at 1.** Removing a line is always the explicit "Remove" action, never a side effect of the "−" button.
-- **Discounts are displayed, not applied.** The brief asks to show the discount percentage. The cart total uses the listed `price`.
+- **Discounts are displayed, not applied.** The brief asks to show the discount percentage, rounded here to a whole percent and hidden at 0%. The cart total uses the listed `price`.
 - **Tests sit at three seams.** Testing behaviour through public interfaces keeps the tests robust to refactoring:
   - The products module's public functions, with `fetch` stubbed. Covers pagination, ID validation, 404s, error statuses, network failures and malformed responses.
   - The cart through `CartProvider`/`useCart` and its UI with a real jsdom `localStorage`. Covers repeated adds, quantities, removal, totals, hydration, persistence and corrupt-storage recovery.

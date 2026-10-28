@@ -1,3 +1,6 @@
+import { toCents } from "@/lib/money";
+import type { ProductSummary } from "@/lib/products";
+
 /** What the cart keeps about a product: a snapshot taken when it was added. */
 export type CartProduct = {
   id: number;
@@ -8,13 +11,20 @@ export type CartProduct = {
 
 export type CartItem = CartProduct & { quantity: number };
 
-export type CartState = {
+// Must match `images.remotePatterns` in next.config.ts, or next/image rejects the URL.
+const IMAGE_URL_PREFIX = "https://cdn.dummyjson.com/product-images/";
+
+export function toCartProduct({ id, title, price, thumbnail }: ProductSummary): CartProduct {
+  return { id, title, priceCents: toCents(price), thumbnail };
+}
+
+type CartState = {
   items: CartItem[];
   /** False until the saved cart has been read from storage on the client. */
   hydrated: boolean;
 };
 
-export type CartAction =
+type CartAction =
   | { type: "hydrate"; items: CartItem[] }
   | { type: "add"; product: CartProduct }
   | { type: "increment"; id: number }
@@ -76,6 +86,7 @@ function isCartItem(value: unknown): value is CartItem {
     Number.isSafeInteger(item.priceCents) &&
     (item.priceCents as number) >= 0 &&
     typeof item.thumbnail === "string" &&
+    item.thumbnail.startsWith(IMAGE_URL_PREFIX) &&
     isPositiveInteger(item.quantity)
   );
 }

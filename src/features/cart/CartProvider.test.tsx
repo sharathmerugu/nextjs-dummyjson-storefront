@@ -6,13 +6,13 @@ const mascara = {
   id: 1,
   title: "Mascara",
   priceCents: 999,
-  thumbnail: "https://cdn.dummyjson.com/mascara.webp",
+  thumbnail: "https://cdn.dummyjson.com/product-images/mascara.webp",
 };
 const lipstick = {
   id: 2,
   title: "Lipstick",
   priceCents: 1250,
-  thumbnail: "https://cdn.dummyjson.com/lipstick.webp",
+  thumbnail: "https://cdn.dummyjson.com/product-images/lipstick.webp",
 };
 
 afterEach(() => {
@@ -136,6 +136,11 @@ describe("cart persistence", () => {
     { case: "a fractional price", stored: JSON.stringify([{ ...mascara, priceCents: 9.99, quantity: 1 }]) },
     { case: "a zero quantity", stored: JSON.stringify([{ ...mascara, quantity: 0 }]) },
     { case: "a string id", stored: JSON.stringify([{ ...mascara, id: "1", quantity: 1 }]) },
+    // next/image only accepts DummyJSON's CDN; any other host would crash the cart page.
+    {
+      case: "an image from another host",
+      stored: JSON.stringify([{ ...mascara, thumbnail: "https://example.com/x.png", quantity: 1 }]),
+    },
   ])("recovers with an empty cart when the saved cart is $case", async ({ stored }) => {
     localStorage.setItem(STORAGE_KEY, stored);
 

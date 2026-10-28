@@ -19,14 +19,17 @@ test("a shopper adds a product twice, keeps it across a reload, and removes it",
   await expect(page).toHaveURL("/cart");
   const line = page.getByRole("listitem", { name: "Essence Mascara Lash Princess" });
   const summary = page.getByRole("region", { name: "Order summary" });
+  const summaryItems = summary.locator("dt:text-is('Items') + dd");
+  const summaryTotal = summary.locator("dt:text-is('Total') + dd");
   await expect(line.getByRole("status", { name: "Quantity" })).toHaveText("2");
-  await expect(summary).toContainText("Items2");
-  await expect(summary).toContainText("Total$19.98");
+  await expect(summaryItems).toHaveText("2");
+  await expect(summaryTotal).toHaveText("$19.98");
 
   await page.reload();
 
   await expect(line.getByRole("status", { name: "Quantity" })).toHaveText("2");
-  await expect(summary).toContainText("Total$19.98");
+  await expect(summaryItems).toHaveText("2");
+  await expect(summaryTotal).toHaveText("$19.98");
   await expect(cartLink).toHaveAccessibleName("Cart, 2 items");
 
   await line.getByRole("button", { name: "Remove Essence Mascara Lash Princess" }).click();

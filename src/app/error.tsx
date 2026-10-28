@@ -10,7 +10,7 @@ export default function Error({ error, retry }: { error: unknown; retry: () => v
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">Something went wrong</h1>
-      <p>We couldn&apos;t load the products. Please try again.</p>
+      <p>We couldn&apos;t load this page. Please try again.</p>
       <button
         type="button"
         onClick={() => retry()}

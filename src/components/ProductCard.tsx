@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ProductSummary } from "@/lib/products";
-import { formatPrice } from "@/lib/money";
+import { formatDollars } from "@/lib/money";
 import { Rating } from "./Rating";
 
 export function ProductCard({ product }: { product: ProductSummary }) {
@@ -12,7 +12,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
     >
       <Image
         src={product.thumbnail}
-        alt={product.title}
+        alt=""
         width={300}
         height={300}
         sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
@@ -20,7 +20,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
       />
       <h2 className="mt-3 line-clamp-2 font-medium group-hover:underline">{product.title}</h2>
       <div className="mt-auto flex items-center justify-between pt-2">
-        <span className="font-semibold">{formatPrice(product.price)}</span>
+        <span className="font-semibold">{formatDollars(product.price)}</span>
         <Rating value={product.rating} />
       </div>
     </Link>
