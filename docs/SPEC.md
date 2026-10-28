@@ -23,13 +23,13 @@ A Next.js 16 App Router app (TypeScript strict, Tailwind, npm) that renders the 
 14. As a shopper, I want an error page with "Try again" when the product service fails or returns unexpected data.
 15. As a shopper, I want loading skeletons while the list or detail page loads.
 16. As a shopper, I want the tab title to show the product name on detail pages.
-17. As a shopper, I want an "Add to cart" button on the detail page.
+17. As a shopper, I want an "Add to cart" button on the detail page while the product isn't in my cart.
 18. As a shopper, I want adding the same product again to increase its quantity.
-19. As a shopper, I want the button to confirm how many are in my cart.
+19. As a shopper, once the product is in my cart, I want the detail page to show a quantity stepper with the cart's current quantity, so I can adjust or remove it without leaving the page.
 20. As a shopper, I want the header to show my total item count (sum of quantities) on every page.
 21. As a screen-reader user, I want the cart link to announce its count and count changes.
-22. As a shopper, I want a cart page listing thumbnail, linked title, unit price, quantity controls, line subtotal and Remove for each line.
-23. As a shopper, I want +/− quantity controls, with − disabled at 1.
+22. As a shopper, I want a cart page listing thumbnail, linked title, unit price, quantity controls, line subtotal and Remove (for quantities above 1) for each line.
+23. As a shopper, I want the same +/− stepper on the detail and cart pages, with − replaced by a trash button that removes the product at quantity 1.
 24. As a shopper, I want to remove a product entirely.
 25. As a shopper, I want to see the total item count, my discount savings and the total price on the cart page.
 26. As a shopper, I want accurate totals with no floating-point artifacts.
@@ -82,7 +82,7 @@ A Next.js 16 App Router app (TypeScript strict, Tailwind, npm) that renders the 
 - **Products seam** (Vitest, stubbed `fetch`): `parsePage` edge cases; skip/limit/select sent upstream; page count for total 0, an exact multiple, and a remainder; invalid IDs return null with no fetch; 404 returns null; error status, network failure, non-JSON and malformed shapes throw.
 - **Cart seam** (Vitest + RTL + jsdom `localStorage`, through `CartProvider`/`useCart` and the cart UI): repeated adds, increment/decrement, removal, totals, hydration, persistence across remount, no overwrite before hydration, corrupt-storage recovery, storage unavailable.
 - **Money**: `discountedCents` for 0%, fractional and 100% discounts; `formatPercent`.
-- **E2E seam** (Playwright against a production build and a local fixture API): check discounted prices on the card and detail page, add the same product twice, verify quantity 2, savings and the correct total, reload to verify persistence, then remove.
+- **E2E seam** (Playwright against a production build and a local fixture API): check discounted prices on the card and detail page, step the quantity 0 → 1 → 2 → 1 → 0 on the detail page, verify quantity 2, savings and the correct total on the cart page, reload to verify persistence, check the detail page reflects a cart-page change, then remove with the trash button.
 
 ## Out of Scope
 Checkout, auth, coupon codes, stock limits, cross-tab sync, search, filters, sorting, numbered pagination, i18n, refreshing stale prices.

@@ -4,10 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { formatCents } from "@/lib/money";
 import { useCart } from "./CartProvider";
+import { QuantityStepper } from "./QuantityStepper";
 
 export function CartView() {
-  const { items, hydrated, totalCount, totalPriceCents, totalSavingsCents, increment, decrement, remove } =
-    useCart();
+  const { items, hydrated, totalCount, totalPriceCents, totalSavingsCents, remove } = useCart();
 
   // Rendering "empty" before the saved cart loads would flash the wrong state.
   if (!hydrated) {
@@ -44,38 +44,20 @@ export function CartView() {
                 </Link>
                 <p className="text-sm text-zinc-500">{formatCents(item.priceCents)} each</p>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => decrement(item.id)}
-                  disabled={item.quantity <= 1}
-                  aria-label={`Decrease quantity of ${item.title}`}
-                  className="h-8 w-8 rounded-md border border-zinc-300 disabled:opacity-40"
-                >
-                  −
-                </button>
-                <output aria-label="Quantity" className="w-6 text-center">
-                  {item.quantity}
-                </output>
-                <button
-                  type="button"
-                  onClick={() => increment(item.id)}
-                  aria-label={`Increase quantity of ${item.title}`}
-                  className="h-8 w-8 rounded-md border border-zinc-300"
-                >
-                  +
-                </button>
-              </div>
+              <QuantityStepper item={item} />
               <div className="text-right">
                 <p className="font-medium">{formatCents(item.priceCents * item.quantity)}</p>
-                <button
-                  type="button"
-                  onClick={() => remove(item.id)}
-                  aria-label={`Remove ${item.title}`}
-                  className="text-sm text-red-700 hover:underline"
-                >
-                  Remove
-                </button>
+                {/* At quantity 1 the stepper's trash button already removes the line. */}
+                {item.quantity > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => remove(item.id)}
+                    aria-label={`Remove ${item.title}`}
+                    className="text-sm text-red-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
             </div>
           </li>

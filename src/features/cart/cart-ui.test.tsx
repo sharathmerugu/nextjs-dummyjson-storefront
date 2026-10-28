@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { AddToCartButton } from "./AddToCartButton";
 import { CartLink } from "./CartLink";
@@ -28,20 +29,66 @@ function saveCart(items: unknown[]) {
   localStorage.setItem("cart:v2", JSON.stringify(items));
 }
 
-describe("add to cart button", () => {
-  it("adds the product and reports how many are in the cart", async () => {
-    render(
+describe("product page cart control", () => {
+  function renderProductControl() {
+    return render(
       <CartProvider>
         <CartLink />
         <AddToCartButton product={mascara} />
       </CartProvider>,
     );
+  }
+
+  it("moves between Add to cart, trash and − as the quantity goes 0 → 1 → 2 → 1 → 0", async () => {
+    renderProductControl();
 
     fireEvent.click(await screen.findByRole("button", { name: "Add to cart" }));
-    fireEvent.click(screen.getByRole("button", { name: /in cart/ }));
 
-    expect(screen.getByRole("button", { name: "Added · 2 in cart" })).toBeTruthy();
+    const stepper = within(screen.getByRole("group", { name: "Quantity of Mascara" }));
+    expect(stepper.getByText("1", { selector: "output" })).toBeTruthy();
+    expect(stepper.queryByRole("button", { name: "Decrease quantity of Mascara" })).toBeNull();
+    const increase = stepper.getByRole("button", { name: "Increase quantity of Mascara" });
+    expect(document.activeElement).toBe(increase);
+    expect(screen.queryByRole("button", { name: "Add to cart" })).toBeNull();
+
+    fireEvent.click(increase);
+    expect(stepper.getByText("2", { selector: "output" })).toBeTruthy();
+    expect(stepper.queryByRole("button", { name: "Remove Mascara" })).toBeNull();
     expect(screen.getByRole("link", { name: "Cart, 2 items" })).toBeTruthy();
+
+    fireEvent.click(stepper.getByRole("button", { name: "Decrease quantity of Mascara" }));
+    expect(stepper.getByText("1", { selector: "output" })).toBeTruthy();
+
+    fireEvent.click(stepper.getByRole("button", { name: "Remove Mascara" }));
+    const add = screen.getByRole("button", { name: "Add to cart" });
+    expect(document.activeElement).toBe(add);
+    expect(screen.queryByRole("group", { name: "Quantity of Mascara" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Cart, 0 items" })).toBeTruthy();
+  });
+
+  it("shows the saved quantity once the cart has loaded", async () => {
+    saveCart([{ ...mascara, quantity: 3 }]);
+    renderProductControl();
+
+    const stepper = within(await screen.findByRole("group", { name: "Quantity of Mascara" }));
+    expect(stepper.getByText("3", { selector: "output" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add to cart" })).toBeNull();
+    // Loading a saved cart is not the shopper's action, so focus stays put.
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("renders a placeholder, not Add to cart, before the saved cart loads", () => {
+    saveCart([{ ...mascara, quantity: 3 }]);
+
+    // The server render can't see localStorage, so it is what shows until hydration.
+    const html = renderToString(
+      <CartProvider>
+        <AddToCartButton product={mascara} />
+      </CartProvider>,
+    );
+
+    expect(html).toContain("Loading cart");
+    expect(html).not.toContain("Add to cart");
   });
 });
 
@@ -123,23 +170,29 @@ describe("cart page", () => {
     expect(summary.getByText("$17.88")).toBeTruthy();
   });
 
-  it("changes quantities, never below one, and updates the totals", async () => {
+  it("changes quantities, swapping − for a trash button and hiding Remove at one", async () => {
     saveCart([{ ...mascara, quantity: 1 }]);
     renderCartPage();
 
     const line = within(await screen.findByRole("listitem", { name: "Mascara" }));
-    const decrease = line.getByRole("button", { name: "Decrease quantity of Mascara" });
-    expect((decrease as HTMLButtonElement).disabled).toBe(true);
+    expect(line.getAllByRole("button", { name: "Remove Mascara" })).toHaveLength(1);
+    expect(line.getByRole("button", { name: "Remove Mascara" }).getAttribute("title")).toBe("Remove from cart");
+    expect(line.queryByRole("button", { name: "Decrease quantity of Mascara" })).toBeNull();
 
     fireEvent.click(line.getByRole("button", { name: "Increase quantity of Mascara" }));
 
     expect(line.getByText("2", { selector: "output" })).toBeTruthy();
-    expect((decrease as HTMLButtonElement).disabled).toBe(false);
+    expect(line.getByText("Remove")).toBeTruthy();
     const summary = within(screen.getByRole("region", { name: "Order summary" }));
     expect(summary.getByText("$19.98")).toBeTruthy();
 
-    fireEvent.click(decrease);
+    fireEvent.click(line.getByRole("button", { name: "Decrease quantity of Mascara" }));
     expect(line.getByText("1", { selector: "output" })).toBeTruthy();
+    expect(line.queryByText("Remove")).toBeNull();
+
+    fireEvent.click(line.getByRole("button", { name: "Remove Mascara" }));
+    expect(screen.queryByRole("listitem", { name: "Mascara" })).toBeNull();
+    expect(screen.getByText("Your cart is empty.")).toBeTruthy();
   });
 
   it("removes a line and shows the empty state when nothing is left", async () => {
