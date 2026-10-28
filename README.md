@@ -6,7 +6,7 @@ A small e-commerce app built with Next.js 16 (App Router) on the [DummyJSON](htt
 
 ## Running locally
 
-Requires Node.js 22+.
+Requires Node.js 20.9+ (developed on 22).
 
 ```bash
 npm install
@@ -25,6 +25,10 @@ Other scripts:
 
 Before the first e2e run, install the browser once with `npx playwright install chromium`.
 
+## Deployment
+
+Hosted on Vercel. No environment variables are needed because DummyJSON is a public API. Deploys are manual (`npx vercel deploy --prod`): the Vercel project isn't connected to the GitHub repo, so pushes don't deploy automatically.
+
 ## How it's put together
 
 ```
@@ -41,7 +45,7 @@ e2e/                   Playwright test
 
 **Data fetching and caching.** Pages call `getProducts(page)` / `getProduct(id)` directly. There are no API routes and no client fetching library, because there's no client-side server state to manage. The app uses Cache Components (the default for new Next.js 16 apps), so each upstream response is cached with `"use cache"` + `cacheLife("hours")`, revalidating roughly hourly. Pages read `searchParams`/`params` at request time and stream in behind `loading.tsx` skeletons, while the header and layout are prerendered as a static shell.
 
-**Pagination.** 20 products per page, using DummyJSON's `limit`/`skip`, with the page kept in the URL (`/?page=N`). This makes pages shareable and bookmarkable, and lets the back button work, with no client state. Page 1 is always `/`. A missing or malformed `page` falls back to page 1, and a page past the end shows not-found. An empty catalog still renders page 1 with an empty-state message instead of a 404.
+**Pagination.** 20 products per page, using DummyJSON's `limit`/`skip`, with the page kept in the URL (`/?page=N`). This makes pages shareable and bookmarkable, and lets the back button work, with no client state. Pagination links point page 1 to `/` (`/?page=1` also works but isn't redirected). A missing or malformed `page` falls back to page 1, and a page past the end shows not-found. An empty catalog still renders page 1 with an empty-state message instead of a 404.
 
 **Validating external data.** TypeScript types don't check JSON at runtime, so `lib/products.ts` checks the fields the UI depends on before returning them. It uses small hand-written type guards instead of adding a schema library for two endpoints. A malformed response, an error status or a network failure raises an error that the route's error boundary turns into a "Try again" screen. Product IDs are validated as positive integers before any request is made. Invalid IDs and upstream 404s both render "Product not found".
 
@@ -70,7 +74,7 @@ e2e/                   Playwright test
 
 ## Known limitations
 
-- **Not-found pages return HTTP 200, not 404.** Product and page lookups happen after the response has started streaming, so Next.js can't change the status code. It marks the page `noindex` instead.
+- **Missing products and out-of-range pages return HTTP 200, not 404.** These lookups happen after the response has started streaming, so Next.js can't change the status code. It marks the page `noindex` instead. URLs that match no route (e.g. `/abc`) still return a real 404.
 - **Cart prices can go stale**, because they are snapshots taken when the product was added.
 - **No cross-tab sync.** A cart changed in one tab updates in another only after a reload.
 - **Stock and minimum order quantities are ignored.**
